@@ -1,6 +1,6 @@
 import { io } from 'https://cdn.socket.io/4.7.5/socket.io.esm.min.js'
 
-const SERVER = 'https://air.appdets.com'
+const SERVER = 'https://wings.jafran.me'
 
 class Wings {
 
