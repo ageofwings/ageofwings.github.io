@@ -1,0 +1,560 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Wings - Real-Time P2P File Transferring Solution by CSE, SEU</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', monospace;
+        }
+    </style>
+</head>
+
+<body class="bg-sky-600">
+    <main id="app"
+        class="w-full flex flex-col sm:max-w-3xl sm:h-[500px] mx-auto sm:top-1/2 sm:left-1/2 sm:fixed sm:-translate-x-1/2 sm:-translate-y-1/2 bg-white sm:rounded-xl overflow-hidden">
+        <div class="grid h-full h-full divide-y sm:divide-x divide-gray-100" :class="{
+            'sm:grid-cols-2' : files.length
+        }">
+            <div class="flex flex-col">
+                <h2 class="text-lg p-6 sm:text-xl font-bold tracking-wide text-gray-700">{{ state.ready ? '😊' : '😴' }}
+                    Wings <span class="text-sm font-normal text-gray-500">{{ state.ready ? 'is ready.' : 'is breathing...' }}</span></h2>
+                <!-- uploader  -->
+                <div @click="focusInput" :data-active="state.dragging"
+                    class="h-full w-full transition flex flex-col gap-5 items-center justify-center p-8 relative"
+                    @dragenter.prevent="state.dragging = true" @dragover.prevent="state.dragging = true">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-12 text-sky-600" viewBox="0 0 16 16">
+                        <path
+                            d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5" />
+                        <path
+                            d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z" />
+                    </svg>
+                    <div class="flex flex-col gap-2 items-center">
+                        <h3 class="text-xl text-gray-700">Drag and Drop file</h3>
+                        <span class="text-base text-gray-400">or</span>
+                        <button type="button"
+                            class="bg-sky-500 text-white px-8 py-2 hover:bg-sky-600 transition rounded">Browse</button>
+                    </div>
+                    <input id="uploader" @change.prevent="uploadFiles($event.target.files)" type="file" class="hidden"
+                        multiple>
+                    <!-- dropzone  -->
+                    <div v-if="state.dragging" @drop.prevent="handleDrop( $event )"
+                        @dragleave.prevent="state.dragging = false"
+                        class="absolute left-0 top-0 w-full h-full bg-white p-3">
+                        <div
+                            class="border-[6px] h-full w-full border-dashed border-sky-500 border-inset rounded-l-xl flex flex-col items-center gap-6 items-center justify-center text-sky-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-12 text-sky-600"
+                                viewBox="0 0 16 16">
+                                <path
+                                    d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5" />
+                                <path
+                                    d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z" />
+                            </svg> Drop your files here. {{state.dragging}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- files  -->
+            <div class="bg-slate-50 p-6 h-full" v-if="files.length">
+                <div class="h-full sm:max-h-[450px] overflow-y-scroll flex flex-col gap-4"
+                    :class="{'pr-8' : files.length}">
+                    <div v-for="(file, index) in files" class="flex items-center gap-3 justify-between">
+                        <!-- meta  -->
+                        <div class="flex items-center gap-4">
+                            <span
+                                class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold uppercase text-sky-600 bg-sky-50 border border-sky-600">{{
+                                file.extension.slice(0, 4) }}</span>
+                            <h2 class="text-sm flex flex-col text-gray-700 leading-normal whitespace-nowrap" :title="file.name"> {{
+                                file.name.length > 25 ? file.name.slice(0, 25) + '...' : file.name }} <span
+                                    class="text-xs text-gray-300 text-thin"><span v-if="file.processing">{{
+                                        getSize(file.processedSize) }} / </span>{{ getSize(file.size) }} <span
+                                        v-if="file.processing">| {{ Math.ceil( 100 * file.processedSize / file.size )
+                                        }}%</span></span></h2>
+                        </div>
+                        <!-- available  -->
+                        <div v-if="file.available" class="flex items-center gap-2">
+                            <button @click.prevent="downloadFile(file.hash)"
+                                class="bg-sky-500 hover:bg-sky-600 w-7 h-7 rounded-full flex items-center justify-center text-white">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-3.5" viewBox="0 0 16 16">
+                                    <path
+                                        d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5" />
+                                    <path
+                                        d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z" />
+                                </svg>
+                            </button>
+                            <button @click.prevent="removeFile(file.hash)"
+                                class="bg-red-500 hover:bg-red-600 w-7 h-7 rounded-full flex items-center justify-center text-white">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-5" viewBox="0 0 16 16">
+                                    <path
+                                        d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
+                                </svg>
+                            </button>
+                        </div>
+                        <!-- processing  -->
+                        <div v-else class="group relative cursor-pointer w-4 h-4 flex items-center justify-center"
+                            @click="removeFile(file.hash)">
+                            <svg v-if="file.processing" xmlns="http://www.w3.org/2000/svg"
+                                class="absolute z-10 opacity-0 bg-gray-50 w-full h-full left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-pointer group-hover:text-red-500 transition group-hover:opacity-100 fill-current text-red-600 w-8 transition"
+                                viewBox="0 0 16 16">
+                                <path
+                                    d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
+                            </svg>
+                            <div v-if="file.processing || file.processing"
+                                class="w-4 h-4 rounded-full border-2 border-sky-600 animate-spin border-t-transparent">
+                            </div>
+                            <svg v-else xmlns="http://www.w3.org/2000/svg"
+                                class="group-hover:opacity-0 fill-current w-4 text-yellow-500" viewBox="0 0 16 16">
+                                <path
+                                    d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="bg-slate-100 p-5 text-gray-600 text-sm flex items-center gap-2">
+            <span>Online <span class="text-slate-500">{{users.length}}</span></span> - <div class="flex flex-wrap gap-2"
+                v-if="users.length"> {{ users.map( u => u.name ).join(', ') }} </div>
+        </footer>
+    </main>
+    <script type="module">
+        import Wings from './public/wings.js'
+        import { createApp, ref, reactive, computed, onMounted } from 'https://unpkg.com/vue@3.4.27/dist/vue.esm-browser.js'
+
+        var wings = {}
+
+        createApp({
+            setup() {
+
+                // State.
+                const state = reactive({})
+                const users = ref([])
+
+                const files = ref([
+                    // {
+                    //     name: 'File 1',
+                    //     hash: 'file1',
+                    //     size: 1000000,
+                    //     type: 'pdf',
+                    //     processedSize: 0,
+                    //     file: null,
+                    //     processing: 1,
+                    // },
+                ])
+
+                // Get size.
+                const getSize = (size) => {
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+                    if (size == 0) return 'n/a'
+                    const i = parseInt(Math.floor(Math.log(size) / Math.log(1024)))
+                    if (i == 0) return size + ' ' + sizes[i]
+                    return (size / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i]
+                }
+
+                const focusInput = () => {
+                    document.getElementById('uploader').click()
+                }
+
+                const handleDrop = (e) => {
+                    state.dragging = false
+                    uploadFiles(e.dataTransfer.files)
+                }
+
+                const makeUniqueHash = (fileName) => {
+                    // Combine current timestamp and filename for randomness
+                    const combinedString = `${Date.now()}-${fileName}`;
+
+                    // Use bitwise operations for a more robust hash (not cryptographically secure)
+                    let hash = 0;
+                    for (let i = 0; i < combinedString.length; i++) {
+                        const charCode = combinedString.charCodeAt(i);
+                        hash = (hash << 5) - hash + charCode; // Bitwise left shift, subtract, and add character code
+                        hash &= hash; // Bitwise AND with itself (convert to 32-bit integer)
+                    }
+
+                    // Truncate and convert to hex string (optional)
+                    const truncatedHash = hash.toString(16).substring(0, 8); // Truncate to 8 characters
+
+                    return `${Date.now()}.${truncatedHash}`; //
+                }
+
+                const getFile = (hash) => {
+                    return files.value.find(file => file.hash === hash)
+                }
+
+                // uploadFiles
+                const uploadFiles = (requestedFiles) => {
+                    const newFiles = Array.from(requestedFiles).map(file => {
+                        return {
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            data: file,
+                            hash: makeUniqueHash(file.name),
+                            extension: file.name.split('.').pop().slice(0, 4),
+                            added_at: new Date(),
+                            processedSize: 1,
+                        }
+                    })
+
+                    files.value = [...files.value, ...newFiles]
+
+                    newFiles.forEach(file => {
+                        startUploadingFile(file.hash)
+                    })
+                }
+
+                const startUploadingFile = (hash) => {
+                    const FILE = getFile(hash)
+                    if (!FILE) return
+
+                    FILE.processing = true
+                    FILE.processedSize = 0
+
+                    // Split file into chunks 5Mb each.
+                    const chunkSize = 5 * 1024 * 1024
+                    const totalChunks = Math.ceil(FILE.size / chunkSize)
+
+                    // FileReader.
+                    const reader = new FileReader();
+
+                    let chunkIndex = 1;
+
+                    reader.onload = (event) => {
+
+                        const chunk = event.target.result;
+
+                        if ( FILE.stop ) return;
+
+                        wings.stream({
+                            name: FILE.name,
+                            hash: FILE.hash,
+                            type: FILE.type,
+                            size: FILE.size,
+                            sender: wings.socket.id,
+                            chunk,
+                            chunkSize: chunk.byteLength,
+                            chunkIndex,
+                            totalChunks,
+                        });
+
+                        chunkIndex++;
+
+                        if (chunkIndex <= totalChunks) {
+                            reader.readAsArrayBuffer(FILE.data.slice((chunkIndex - 1) * chunkSize, chunkIndex * chunkSize));
+                        }
+
+                        FILE.processedSize += chunk.byteLength;
+
+                        if (chunkIndex > totalChunks) {
+                            FILE.processing = false;
+                            FILE.available = true;
+                        }
+                    };
+
+                    reader.readAsArrayBuffer(FILE.data.slice(0, chunkSize));
+                }
+
+                const stopUploading = (hash) => {
+                    const FILE = getFile(hash)
+                    FILE.processing = false
+                    FILE.processedSize = 0
+                    FILE.available = false
+                    FILE.stop = true
+
+                    // Broadcast when the uploader deleted the file.
+                    wings.broadcast({
+                        type: 'delete',
+                        hash,
+                    })
+                }
+
+                // removeFIle
+                const removeFile = (hash) => {
+
+                    const FILE = getFile(hash)
+
+                    // Broadcast when the uploader deleted the file.
+                    if (FILE.sender === wings.socket.id) {
+
+                        // console.log("REMOVE", FILE.sender, wings.socket.id);
+                        stopUploading(FILE.hash)
+
+                        wings.broadcast({
+                            type: 'delete',
+                            hash,
+                        })
+                    }
+
+                    files.value.splice(files.value.indexOf(FILE), 1)
+                }
+
+                // downloadFile
+                const downloadFile = (hash) => {
+                    const FILE = getFile(hash)
+
+                    // Download blob
+                    const blob = new Blob([FILE.data], { type: FILE.type })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = FILE.name
+                    a.click()
+                }
+
+                // Get user.
+                const user = ref('')
+                const getUser = async () => {
+                    return new Promise((resolve, reject) => {
+
+                        user.value = localStorage.getItem('wings_user')
+                        if (user.value) {
+                            resolve(user.value)
+                            return;
+                        }
+
+                        // Ask using Swal.
+                        Swal.fire({
+                            title: 'Please enter your name',
+                            input: 'text',
+                            timer: null,
+                            inputAttributes: {
+                                autocapitalize: "off",
+                                placeholder: 'Your Name'
+                            },
+                            confirmButtonText: 'Save'
+                        }).then(result => {
+                            user.value = result.value
+                            localStorage.setItem('wings_user', user.value)
+                            resolve(user.value)
+                        })
+                    })
+                }
+
+                // Wings.
+                const connectWings = async () => {
+                    const user = await getUser()
+                    wings = Wings.init('demo', { user })
+                    return true
+                }
+
+                // Listen Wings
+                const listenWings = async () => {
+                    wings.onConnect(msg => {
+                        state.ready = true
+                    })
+                    wings.onError(msg => {
+                        state.ready = false
+                        console.log("Error", msg);
+                    })
+                    wings.onDisconnect(msg => state.ready = false)
+                    wings.onMessage(data => {
+
+                        switch (data.type) {
+                            case 'meta':
+
+                                // Add file to list.
+                                files.value.push({
+                                    name: data.name,
+                                    hash: data.hash,
+                                    type: data.type,
+                                    size: data.size,
+                                    type: data.name.split('.').pop(),
+                                    processedSize: 1,
+                                    chunks: [],
+                                    totalChunks: data.totalChunks,
+                                    processing: true,
+                                })
+                                break
+
+                            // Sent Stream.
+                            case 'sent':
+                                // Bail, if type is not file.
+                                // console.log("SENT", data);
+                                if (data.type != 'file') return
+
+                                let File = getFile(data.hash)
+                                if (!File) return
+
+                                // Add chunk size.
+                                File.processedSize += data.chunkSize
+
+                                // Check if file is complete.
+                                if (File.processedSize >= File.size) {
+                                    File.processing = false
+                                    File.available = true
+                                }
+
+                                break;
+
+                            // Receive user list.
+                            case 'users':
+                                const userId = data.id || false
+                                // If current user, return.
+                                // console.log("USERS", userId, wings.socket.id );
+
+                                if (userId && userId === wings.socket.id) {
+                                    users.value = data.users
+                                    return
+                                }
+
+                                if ( !userId ) return
+
+                                // Add user to list if not exists.
+                                const userExists = users.value.find(u => u.id == userId)
+
+                                if ( ! userExists ) {
+
+                                    // Notify user joined.
+                                    users.value = data.users
+                                    let name = users.value.find(u => u.id == userId).name
+
+                                    Swal.fire({
+                                        position: 'bottom-end',
+                                        toast: true,
+                                        html: name + ' joined the channel.',
+                                        showConfirmButton: false,
+                                        timer: 4000,
+                                        timerProgressBar: true,
+                                    })
+                                } else {
+                                    // Notify user left.
+                                    let name = users.value.find(u => u.id == userId).name
+                                    Swal.fire({
+                                        position: 'bottom-end',
+                                        toast: true,
+                                        html: name + ' left the channel.',
+                                        showConfirmButton: false,
+                                        timer: 4000,
+                                        timerProgressBar: true,
+                                    })
+
+                                    // Update users.
+                                    users.value = data.users
+                                }
+ 
+
+
+                                break;
+
+                            // Delete.
+                            case 'delete':
+                                // console.log("DELETE", data);
+                                const FILE = getFile(data.hash)
+                                if (FILE) {
+                                    files.value.splice(files.value.indexOf(FILE), 1)
+                                }
+
+                                break;
+                            default:
+                                break
+                        }
+                    })
+
+                    wings.onStream(data => {
+
+                        // console.log("Stream Received", data);
+
+                        // Receive array buffer and append to file.
+                        let FILE = getFile(data.hash)
+
+                        if (FILE) {
+
+                            FILE.chunks.push(data.chunk)
+                            FILE.processedSize += data.chunkSize
+
+                        } else {
+
+                            // Add file to list.
+                            files.value.push({
+                                name: data.name,
+                                hash: data.hash,
+                                type: data.type,
+                                size: data.size,
+                                extension: data.name.split('.').pop(),
+                                processedSize: data.chunkSize,
+                                chunks: [
+                                    data.chunk
+                                ],
+                                totalChunks: data.totalChunks,
+                                processing: true,
+                            })
+
+                            FILE = getFile(data.hash)
+
+                            let senderName = users.value.find(u => u.id == data.sender).name
+                            // Notify user.
+                            Swal.fire({
+                                position: 'bottom-end',
+                                toast: true,
+                                html: 'New file received from ' + senderName,
+                                showConfirmButton: false,
+                                timer: 5000,
+                                timerProgressBar: true,
+                                showCloseButton: true,
+                                allowOutsideClick: true,
+                            })
+
+                        }
+
+                        // Check if file is complete.
+                        if (FILE.chunks.length === FILE.totalChunks) {
+
+                            // Combine chunks.
+                            const blob = new Blob(FILE.chunks, { type: FILE.type })
+
+                            // Update file.
+                            FILE.data = blob
+
+                            // Mark file as available.
+                            FILE.processing = false
+                            FILE.available = true
+
+                            // Notify user.
+                            Swal.fire({
+                                icon: 'success',
+                                position: 'bottom-end',
+                                toast: true,
+                                html: 'File is ready to download',
+                                showConfirmButton: false,
+                                timer: 5000,
+                                timerProgressBar: true,
+                                showCloseButton: true,
+                                allowOutsideClick: true,
+                            })
+                        }
+
+                    })
+                }
+
+                // onMounted.
+                onMounted(async () => {
+                    await connectWings()
+                    listenWings()
+                })
+
+                return {
+                    state,
+                    files,
+                    users,
+                    getSize,
+                    focusInput,
+                    handleDrop,
+                    uploadFiles,
+                    removeFile,
+                    downloadFile
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+
+</html>
