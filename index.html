@@ -20,7 +20,7 @@
 
 <body class="bg-sky-600">
     <main id="app"
-        class="w-full flex flex-col sm:max-w-3xl sm:h-[500px] mx-auto sm:top-1/2 sm:left-1/2 sm:fixed sm:-translate-x-1/2 sm:-translate-y-1/2 bg-white sm:rounded-xl overflow-hidden">
+        class="w-full flex flex-col md:max-w-3xl h-[calc(100vh-35px)] md:h-[500px] mx-auto md:top-1/2 sm:left-1/2 md:fixed md:-translate-x-1/2 md:-translate-y-1/2 bg-white md:rounded-xl overflow-hidden">
         <div class="grid h-full h-full divide-y sm:divide-x divide-gray-100" :class="{
             'sm:grid-cols-2' : files.length
         }">
@@ -219,8 +219,8 @@
                     FILE.processing = true
                     FILE.processedSize = 0
 
-                    // Split file into chunks 5Mb each.
-                    const chunkSize = 5 * 1024 * 1024
+                    // Split file into chunks 2Mb each.
+                    const chunkSize = 1 * 1024 * 1024
                     const totalChunks = Math.ceil(FILE.size / chunkSize)
 
                     // FileReader.
@@ -341,8 +341,8 @@
 
                 // Wings.
                 const connectWings = async () => {
-                    const user = await getUser()
-                    wings = Wings.init('demo', { user })
+                    const name = await getUser()
+                    wings = Wings.init({ name })
                     return true
                 }
 
@@ -415,7 +415,7 @@
 
                                     // Notify user joined.
                                     users.value = data.users
-                                    let name = users.value.find(u => u.id == userId).name
+                                    let name = users.value.find(u => u.id == userId)?.name
 
                                     Swal.fire({
                                         position: 'bottom-end',
@@ -427,7 +427,7 @@
                                     })
                                 } else {
                                     // Notify user left.
-                                    let name = users.value.find(u => u.id == userId).name
+                                    let name = users.value.find(u => u.id == userId)?.name
                                     Swal.fire({
                                         position: 'bottom-end',
                                         toast: true,
