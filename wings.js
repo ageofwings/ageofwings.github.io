@@ -16,7 +16,7 @@ class Wings {
     }
 
     #initWebSocket( query ) {
-        this.socket = io();
+        this.socket = io('wss://wings.jafran.me');
 
         this.socket.on('connect', () => {
             this.socket.emit('join', query.name );
