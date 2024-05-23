@@ -1,29 +1,25 @@
 import { io } from 'https://cdn.socket.io/4.7.5/socket.io.esm.min.js'
 
-const SERVER = '46.137.198.48:3000'
-
 class Wings {
 
     socket;
 
     channel;
 
-    static init(channel, query = {}) {
+    static init( query = {}) {
         const self = new this();
 
-        self.channel = query.room = channel;
-        self.#initWebSocket(query);
+        self.#initWebSocket( query );
         self.#listen();
 
         return self;
     }
 
-    #initWebSocket(query) {
-        this.socket = io(SERVER, {
-            transports: ['websocket', 'polling'],
-            upgrade: false,
-            reconnectionDelayMax: 10000,
-            query
+    #initWebSocket( query ) {
+        this.socket = io();
+
+        this.socket.on('connect', () => {
+            this.socket.emit('join', query.name );
         });
     }
 
